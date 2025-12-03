@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": false,
   "bin": {
-    "cli": "dist/index.js"
+    "cli": "dist/index.js",
+    "sithi": "dist/index.js"
   },
   "scripts": {
     "build": "bunup --clean"
