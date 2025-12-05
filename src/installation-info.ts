@@ -31,11 +31,22 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
   const root = process.cwd();
 
   try {
-    // Normalize path separators to forward slashes for consistent matching.
     const realPath = fs.realpathSync(cliPath).replace(/\\/g, "/");
     const normalizedRoot = root.replace(/\\/g, "/");
 
-    // Check for npx/pnpx
+    if (
+      normalizedRoot &&
+      realPath.startsWith(normalizedRoot) &&
+      !realPath.includes("/node_modules/")
+    ) {
+      return {
+        packageManager: PackageManager.UNKNOWN,
+        isGlobal: false,
+        updateMessage:
+          'Running from a local git clone. Please update with "git pull".',
+      };
+    }
+
     if (realPath.includes("/.npm/_npx") || realPath.includes("/npm/_npx")) {
       return {
         packageManager: PackageManager.NPX,
@@ -44,10 +55,8 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
       };
     }
 
-    // Check for Homebrew
     if (process.platform === "darwin") {
       try {
-        // The package name in homebrew is cli
         childProcess.execSync('brew list -1 | grep -q "^cli$"', {
           stdio: "ignore",
         });
@@ -57,14 +66,13 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
           updateMessage:
             'Installed via Homebrew. Please update with "brew upgrade".',
         };
-      } catch {
-        // Brew is not installed or cli is not installed via brew.
-        // Continue to the next check.
-      }
+      } catch {}
     }
 
-    // Check for pnpm
-    if (realPath.includes("/dlx")) {
+    if (
+      realPath.includes("/pnpm/dlx") ||
+      realPath.includes("/pnpm-cache/dlx")
+    ) {
       return {
         packageManager: PackageManager.PNPX,
         isGlobal: false,
@@ -82,7 +90,6 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
       };
     }
 
-    // Check for yarn
     if (realPath.includes("/.yarn/global")) {
       const updateCommand = "yarn global add @snelusha/cli@latest";
       return {
@@ -93,7 +100,6 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
       };
     }
 
-    // Check for bun
     if (realPath.includes("/bunx")) {
       return {
         packageManager: PackageManager.BUNX,
@@ -111,7 +117,6 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
       };
     }
 
-    // Check for local install
     if (
       normalizedRoot &&
       realPath.startsWith(`${normalizedRoot}/node_modules`)
@@ -135,7 +140,6 @@ export async function getInstallationInfo(): Promise<InstallationInfo> {
       };
     }
 
-    // Assume global npm
     const updateCommand = "npm install -g @snelusha/cli@latest";
     return {
       packageManager: PackageManager.NPM,
